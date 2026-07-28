@@ -1,5 +1,9 @@
 """
-Market data downloader for Crypto Alpha Research Laboratory.
+Market data downloader for the Crypto Alpha Research Laboratory (CARL).
+
+This module is responsible only for downloading historical market data
+from external data providers. It does not perform caching, validation,
+or data storage.
 """
 
 from __future__ import annotations
@@ -16,38 +20,38 @@ def download_prices(
     auto_adjust: bool = True,
 ) -> pd.DataFrame:
     """
-    Download historical OHLCV data from Yahoo Finance.
+    Download historical OHLCV market data from Yahoo Finance.
 
     Parameters
     ----------
     ticker : str
-        Yahoo Finance ticker.
+        Yahoo Finance ticker symbol (e.g. "BTC-USD").
 
     start : str
-        Start date (YYYY-MM-DD).
+        Start date in YYYY-MM-DD format.
 
     end : str
-        End date (YYYY-MM-DD).
+        End date in YYYY-MM-DD format.
 
     interval : str, default="1d"
         Data frequency.
 
     auto_adjust : bool, default=True
-        Whether to adjust prices.
+        Whether to automatically adjust historical prices.
 
     Returns
     -------
     pandas.DataFrame
-        Historical market data.
+        Historical OHLCV market data.
 
     Raises
     ------
     ValueError
-        If no data is returned.
+        If no market data are returned.
     """
 
-    df = yf.download(
-        ticker,
+    prices = yf.download(
+        tickers=ticker,
         start=start,
         end=end,
         interval=interval,
@@ -55,9 +59,9 @@ def download_prices(
         progress=False,
     )
 
-    if df.empty:
+    if prices.empty:
         raise ValueError(
-            f"No market data returned for '{ticker}'."
+            f"No market data returned for ticker '{ticker}'."
         )
 
-    return df
+    return prices
