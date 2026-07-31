@@ -1,3 +1,7 @@
+"""
+Tests for CARL feature matrix construction.
+"""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -23,86 +27,114 @@ from crypto_alpha_lab.features.volume import (
     volume_zscore,
 )
 
+from crypto_alpha_lab.features.trend import (
+    price_to_moving_average,
+    moving_average_spread,
+)
+
 
 def test_feature_matrix_returns_dataframe(
     dataset_factory,
 ):
     dataset = dataset_factory(
-        np.linspace(100, 150, 100)
-    )
-
-    dataset.prices["Volume"] = np.linspace(
-        1000,
-        5000,
-        100,
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
     )
 
     result = build_feature_matrix(
         dataset,
         window=20,
+        trend_long_window=60,
     )
 
-    assert isinstance(result, pd.DataFrame)
+    assert isinstance(
+        result,
+        pd.DataFrame,
+    )
 
 
 def test_feature_matrix_preserves_length(
     dataset_factory,
 ):
     dataset = dataset_factory(
-        np.linspace(100, 150, 100)
-    )
-
-    dataset.prices["Volume"] = np.linspace(
-        1000,
-        5000,
-        100,
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
     )
 
     result = build_feature_matrix(
         dataset,
         window=20,
+        trend_long_window=60,
     )
 
-    assert len(result) == len(dataset.prices)
+    assert len(result) == len(
+        dataset.prices
+    )
+
 
 def test_feature_matrix_preserves_index(
     dataset_factory,
 ):
     dataset = dataset_factory(
-        np.linspace(100, 150, 100)
-    )
-
-    dataset.prices["Volume"] = np.linspace(
-        1000,
-        5000,
-        100,
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
     )
 
     result = build_feature_matrix(
         dataset,
         window=20,
+        trend_long_window=60,
     )
 
     assert result.index.equals(
         dataset.prices.index
     )
 
+
 def test_feature_matrix_columns(
     dataset_factory,
 ):
     dataset = dataset_factory(
-        np.linspace(100, 150, 100)
-    )
-
-    dataset.prices["Volume"] = np.linspace(
-        1000,
-        5000,
-        100,
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
     )
 
     result = build_feature_matrix(
         dataset,
         window=20,
+        trend_long_window=60,
     )
 
     expected_columns = [
@@ -114,9 +146,12 @@ def test_feature_matrix_columns(
         "relative_volume",
         "volume_momentum",
         "volume_zscore",
+        "price_to_moving_average",
+        "moving_average_spread",
     ]
 
     assert list(result.columns) == expected_columns
+
 
 @pytest.mark.parametrize(
     "window",
@@ -127,53 +162,158 @@ def test_feature_matrix_invalid_window(
     window,
 ):
     dataset = dataset_factory(
-        [100, 101, 102]
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
     )
-
-    dataset.prices["Volume"] = [
-        1000,
-        1100,
-        1200,
-    ]
 
     with pytest.raises(ValueError):
         build_feature_matrix(
             dataset,
             window=window,
+            trend_long_window=60,
         )
+
+
+@pytest.mark.parametrize(
+    "trend_long_window",
+    [0, -1, -60],
+)
+def test_feature_matrix_invalid_trend_long_window(
+    dataset_factory,
+    trend_long_window,
+):
+    dataset = dataset_factory(
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
+    )
+
+    with pytest.raises(ValueError):
+        build_feature_matrix(
+            dataset,
+            window=20,
+            trend_long_window=trend_long_window,
+        )
+
+
+@pytest.mark.parametrize(
+    ("window", "trend_long_window"),
+    [
+        (20, 20),
+        (60, 20),
+    ],
+)
+def test_feature_matrix_invalid_trend_window_order(
+    dataset_factory,
+    window,
+    trend_long_window,
+):
+    dataset = dataset_factory(
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
+    )
+
+    with pytest.raises(ValueError):
+        build_feature_matrix(
+            dataset,
+            window=window,
+            trend_long_window=trend_long_window,
+        )
+
 
 def test_feature_matrix_preserves_nan_warmup(
     dataset_factory,
 ):
     dataset = dataset_factory(
-        np.linspace(100, 150, 100)
-    )
-
-    dataset.prices["Volume"] = np.linspace(
-        1000,
-        5000,
-        100,
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
     )
 
     result = build_feature_matrix(
         dataset,
         window=20,
+        trend_long_window=60,
     )
 
     assert result.iloc[0].isna().any()
+
+
+def test_feature_matrix_preserves_long_trend_warmup(
+    dataset_factory,
+):
+    dataset = dataset_factory(
+        close_prices=np.linspace(
+            100,
+            200,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
+    )
+
+    result = build_feature_matrix(
+        dataset,
+        window=20,
+        trend_long_window=60,
+    )
+
+    spread = result[
+        "moving_average_spread"
+    ]
+
+    assert spread.iloc[:59].isna().all()
+
+    assert spread.iloc[59:].notna().all()
 
 
 def test_feature_matrix_price_momentum_consistency(
     dataset_factory,
 ):
     dataset = dataset_factory(
-        np.linspace(100, 150, 100)
-    )
-
-    dataset.prices["Volume"] = np.linspace(
-        1000,
-        5000,
-        100,
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
     )
 
     window = 20
@@ -181,6 +321,7 @@ def test_feature_matrix_price_momentum_consistency(
     matrix = build_feature_matrix(
         dataset,
         window=window,
+        trend_long_window=60,
     )
 
     expected = price_momentum(
@@ -194,58 +335,77 @@ def test_feature_matrix_price_momentum_consistency(
         check_names=False,
     )
 
+
 def test_feature_matrix_matches_feature_functions(
     dataset_factory,
 ):
     dataset = dataset_factory(
-        np.linspace(100, 150, 100)
-    )
-
-    dataset.prices["Volume"] = np.linspace(
-        1000,
-        5000,
-        100,
+        close_prices=np.linspace(
+            100,
+            150,
+            100,
+        ),
+        volume=np.linspace(
+            1000,
+            5000,
+            100,
+        ),
     )
 
     window = 20
+    trend_long_window = 60
 
     matrix = build_feature_matrix(
         dataset,
         window=window,
+        trend_long_window=trend_long_window,
     )
 
     expected = {
         "price_momentum": price_momentum(
             dataset,
-            window,
+            window=window,
         ),
         "rolling_return": rolling_return(
             dataset,
-            window,
+            window=window,
         ),
         "log_momentum": log_momentum(
             dataset,
-            window,
+            window=window,
         ),
         "rolling_volatility": rolling_volatility(
             dataset,
-            window,
+            window=window,
         ),
         "realized_volatility": realized_volatility(
             dataset,
-            window,
+            window=window,
         ),
         "relative_volume": relative_volume(
             dataset,
-            window,
+            window=window,
         ),
         "volume_momentum": volume_momentum(
             dataset,
-            window,
+            window=window,
         ),
         "volume_zscore": volume_zscore(
             dataset,
-            window,
+            window=window,
+        ),
+        "price_to_moving_average": (
+            price_to_moving_average(
+                dataset,
+                window=window,
+            )
+        ),
+        "moving_average_spread": (
+            moving_average_spread(
+                dataset,
+                short_window=window,
+                long_window=trend_long_window,
+            )
         ),
     }
 
@@ -255,4 +415,3 @@ def test_feature_matrix_matches_feature_functions(
             expected_series,
             check_names=False,
         )
-

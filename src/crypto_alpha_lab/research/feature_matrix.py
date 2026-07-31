@@ -20,7 +20,6 @@ from crypto_alpha_lab.features.momentum import (
 from crypto_alpha_lab.features.volatility import (
     rolling_volatility,
     realized_volatility,
-    volatility_zscore,
 )
 
 from crypto_alpha_lab.features.volume import (
@@ -29,29 +28,58 @@ from crypto_alpha_lab.features.volume import (
     volume_zscore,
 )
 
+from crypto_alpha_lab.features.trend import (
+    price_to_moving_average,
+    moving_average_spread,
+)
+
+
 def build_feature_matrix(
     dataset: ResearchDataset,
     window: int = 20,
+    trend_long_window: int = 60,
 ) -> pd.DataFrame:
     """
     Build a date-aligned quantitative research feature matrix.
 
     Parameters
     ----------
-    dataset
+    dataset : ResearchDataset
         Validated CARL research dataset.
 
-    window
-        Lookback window used by feature calculations.
+    window : int, default=20
+        Primary lookback window used by momentum,
+        volatility, volume, and short-term trend features.
+
+    trend_long_window : int, default=60
+        Long lookback window used for the moving-average
+        trend spread.
 
     Returns
     -------
     pandas.DataFrame
-        Date-aligned research feature matrix.
+        Date-aligned quantitative research feature matrix.
+
+    Raises
+    ------
+    ValueError
+        If window parameters are invalid.
     """
 
     if window <= 0:
-        raise ValueError("window must be positive.")
+        raise ValueError(
+            "window must be positive."
+        )
+
+    if trend_long_window <= 0:
+        raise ValueError(
+            "trend_long_window must be positive."
+        )
+
+    if window >= trend_long_window:
+        raise ValueError(
+            "window must be smaller than trend_long_window."
+        )
 
     features = {
         "price_momentum": price_momentum(
@@ -85,6 +113,15 @@ def build_feature_matrix(
         "volume_zscore": volume_zscore(
             dataset,
             window=window,
+        ),
+        "price_to_moving_average": price_to_moving_average(
+            dataset,
+            window=window,
+        ),
+        "moving_average_spread": moving_average_spread(
+            dataset,
+            short_window=window,
+            long_window=trend_long_window,
         ),
     }
 
