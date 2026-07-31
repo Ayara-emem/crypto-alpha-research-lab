@@ -8,7 +8,7 @@ import pytest
 from crypto_alpha_lab.data.download import download_prices
 
 from crypto_alpha_lab.data.cache import (save_cache_prices,
-                                         cache_exists)
+                                         cache_exists,load_cached_prices)
 
 
 START_DATE = "2020-01-01"
@@ -125,3 +125,12 @@ def test_save_prices_creates_cache():
     )
 
     assert cache_exists("BTC-USD")
+
+def test_load_cached_prices_returns_dataframe():
+
+    prices = load_cached_prices("BTC-USD")
+
+    assert isinstance(
+        prices,
+        pd.DataFrame,
+    )
