@@ -14,6 +14,13 @@ from crypto_alpha_lab.features.volatility import (
     volatility_ratio,
     volatility_zscore,
 )
+from crypto_alpha_lab.features.volume import (
+    rolling_average_volume,
+    relative_volume,
+    volume_momentum,
+    volume_zscore,
+)
+
 __all__ = [
     "price_momentum",
     "rolling_return",
@@ -24,4 +31,8 @@ __all__ = [
     "realized_volatility",
     "volatility_ratio",
     "volatility_zscore",
+    "rolling_average_volume",
+    "relative_volume",
+    "volume_momentum",
+    "volume_zscore",
 ]
