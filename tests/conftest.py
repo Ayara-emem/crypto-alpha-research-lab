@@ -8,34 +8,26 @@ from crypto_alpha_lab.dataset import ResearchDataset
 @pytest.fixture
 def dataset_factory():
 
-    def _factory(close_prices):
-
+    def _factory(
+        close_prices,
+        volume=None,
+    ):
         prices = pd.DataFrame(
-            {"Close": close_prices},
+            {
+                "Close": close_prices,
+            },
             index=pd.date_range(
                 "2024-01-01",
                 periods=len(close_prices),
             ),
         )
 
-        return ResearchDataset(prices=prices)
+        if volume is not None:
+            prices["Volume"] = volume
 
-    return _factory
-
-@pytest.fixture
-def dataset_factory():
-
-    def _factory(close_prices):
-
-        prices = pd.DataFrame(
-            {"Close": close_prices},
-            index=pd.date_range(
-                "2024-01-01",
-                periods=len(close_prices),
-            ),
+        return ResearchDataset(
+            prices=prices,
         )
-
-        return ResearchDataset(prices=prices)
 
     return _factory
 
