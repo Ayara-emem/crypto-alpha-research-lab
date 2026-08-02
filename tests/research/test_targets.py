@@ -12,6 +12,7 @@ from crypto_alpha_lab.research.targets import (
     future_return,
     future_log_return,
     future_direction,
+    future_volatility,
 )
 
 from crypto_alpha_lab.dataset import (
@@ -430,3 +431,98 @@ def test_future_direction_last_value_nan(
     assert pd.isna(
         result.iloc[-1]
     )
+
+def test_future_volatility_returns_series(
+    sample_dataset,
+):
+    result = future_volatility(
+        sample_dataset,
+        horizon=2,
+    )
+
+    assert isinstance(
+        result,
+        pd.Series,
+    )
+
+def test_future_volatility_preserves_length(
+    sample_dataset,
+):
+    result = future_volatility(
+        sample_dataset,
+        horizon=2,
+    )
+
+    assert len(result) == len(
+        sample_dataset.prices
+    )
+
+
+def test_future_volatility_preserves_index(
+    sample_dataset,
+):
+    result = future_volatility(
+        sample_dataset,
+        horizon=2,
+    )
+
+    assert result.index.equals(
+        sample_dataset.prices.index
+    )
+
+
+@pytest.mark.parametrize(
+    "horizon",
+    [
+        0,
+        1,
+        -5,
+    ],
+)
+def test_future_volatility_invalid_horizon(
+    sample_dataset,
+    horizon,
+):
+    with pytest.raises(ValueError):
+        future_volatility(
+            sample_dataset,
+            horizon=horizon,
+        )
+
+def test_future_volatility_constant_prices():
+    prices = pd.DataFrame(
+        {
+            "Close": [
+                100,
+                100,
+                100,
+                100,
+                100,
+            ]
+        }
+    )
+
+    dataset = ResearchDataset(
+        prices=prices,
+    )
+
+    result = future_volatility(
+        dataset,
+        horizon=2,
+    )
+
+    assert np.allclose(
+        result.dropna(),
+        0,
+    )
+def test_future_volatility_trailing_nan(
+    sample_dataset,
+):
+    result = future_volatility(
+        sample_dataset,
+        horizon=2,
+    )
+
+    assert result.iloc[-2:].isna().all()
+
+
