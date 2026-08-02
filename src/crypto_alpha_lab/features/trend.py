@@ -9,6 +9,7 @@ of cryptocurrency price trends.
 
 from __future__ import annotations
 
+from asset_pricing_lab.returns import percentage_change
 import pandas as pd
 
 from crypto_alpha_lab.dataset import ResearchDataset
@@ -90,7 +91,9 @@ def price_to_moving_average(
         window=window,
     )
 
-    return close.div(moving_average).sub(1.0)
+    return percentage_change(
+    close,
+    moving_average,)
 
 
 def moving_average_spread(
@@ -128,4 +131,7 @@ def moving_average_spread(
         window=long_window,
     )
 
-    return short_ma.div(long_ma).sub(1.0)
+    return percentage_change(
+    short_ma,
+    long_ma,
+)

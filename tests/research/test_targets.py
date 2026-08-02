@@ -1,13 +1,17 @@
 """
 Tests for research target engineering.
 """
+from __future__ import annotations
 
+from asset_pricing_lab.returns import log_ratio
 import numpy as np
 import pandas as pd
 import pytest
 
 from crypto_alpha_lab.research.targets import (
     future_return,
+    future_log_return,
+    future_direction,
 )
 
 from crypto_alpha_lab.dataset import (
@@ -228,3 +232,201 @@ def test_future_return_positive_prices():
     assert (
         result.dropna() >= 0
     ).all()
+
+def test_future_log_return_returns_series(
+    sample_dataset,
+):
+    result = future_log_return(
+        sample_dataset,
+    )
+
+    assert isinstance(
+        result,
+        pd.Series,
+    )
+
+def test_future_log_return_preserves_length(
+    sample_dataset,
+):
+    result = future_log_return(
+        sample_dataset,
+    )
+
+    assert len(result) == len(
+        sample_dataset.prices
+    )
+
+def test_future_log_return_preserves_index(
+    sample_dataset,
+):
+    result = future_log_return(
+        sample_dataset,
+    )
+
+    assert result.index.equals(
+        sample_dataset.prices.index
+    )
+
+@pytest.mark.parametrize(
+    "horizon",
+    [0, -1, -5],
+)
+def test_future_log_return_invalid_horizon(
+    sample_dataset,
+    horizon,
+):
+    with pytest.raises(ValueError):
+        future_log_return(
+            sample_dataset,
+            horizon=horizon,
+        )
+
+def test_future_log_return_values(
+    sample_dataset,
+):
+    close = sample_dataset.prices["Close"]
+    expected = log_ratio(
+        close.shift(-1),
+        close,
+    )
+
+    result = future_log_return(
+        sample_dataset,
+        horizon=1,
+    )
+
+    pd.testing.assert_series_equal(
+        result,
+        expected,
+        check_names=False,
+    )
+
+
+def test_future_log_return_constant_prices():
+    prices = pd.DataFrame(
+        {
+            "Close": [
+                100,
+                100,
+                100,
+                100,
+            ]
+        }
+    )
+
+    dataset = ResearchDataset(
+        prices=prices,
+    )
+
+    result = future_log_return(
+        dataset,
+    )
+
+    assert np.allclose(
+        result.dropna(),
+        0,
+    )
+
+def test_future_direction_returns_series(
+    sample_dataset,
+):
+    result = future_direction(
+        sample_dataset,
+    )
+
+    assert isinstance(
+        result,
+        pd.Series,
+    )
+
+def test_future_direction_preserves_length(
+    sample_dataset,
+):
+    result = future_direction(
+        sample_dataset,
+    )
+
+    assert len(result) == len(
+        sample_dataset.prices
+    )
+
+
+def test_future_direction_preserves_index(
+    sample_dataset,
+):
+    result = future_direction(
+        sample_dataset,
+    )
+
+    assert result.index.equals(
+        sample_dataset.prices.index
+    )
+
+@pytest.mark.parametrize(
+    "horizon",
+    [0, -1, -5],
+)
+def test_future_direction_invalid_horizon(
+    sample_dataset,
+    horizon,
+):
+    with pytest.raises(ValueError):
+        future_direction(
+            sample_dataset,
+            horizon=horizon,
+        )
+
+def test_future_direction_rising_prices():
+    prices = pd.DataFrame(
+        {
+            "Close": [
+                100,
+                101,
+                102,
+                103,
+            ]
+        }
+    )
+
+    dataset = ResearchDataset(
+        prices=prices,
+    )
+
+    result = future_direction(
+        dataset,
+    )
+
+    assert (result.dropna() == 1).all()
+
+def test_future_direction_falling_prices():
+    prices = pd.DataFrame(
+        {
+            "Close": [
+                103,
+                102,
+                101,
+                100,
+            ]
+        }
+    )
+
+    dataset = ResearchDataset(
+        prices=prices,
+    )
+
+    result = future_direction(
+        dataset,
+    )
+
+    assert (result.dropna() == 0).all()
+
+def test_future_direction_last_value_nan(
+    sample_dataset,
+):
+    result = future_direction(
+        sample_dataset,
+    )
+
+    assert pd.isna(
+        result.iloc[-1]
+    )
