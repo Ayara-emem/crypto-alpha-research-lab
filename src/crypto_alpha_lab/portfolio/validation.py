@@ -195,28 +195,30 @@ def validate_net_exposure(
         weights.sum()
     )
 
+    tolerance = 1e-12
     if (
-        min_net_exposure is not None
-        and net_exposure < min_net_exposure
-    ):
+    min_net_exposure is not None
+    and net_exposure
+    < min_net_exposure - tolerance):
+
         raise ValueError(
-            "Portfolio net exposure "
-            f"{net_exposure:.12f} is below "
-            f"minimum allowed exposure "
-            f"{min_net_exposure:.12f}."
-        )
+        "Portfolio net exposure "
+        f"{net_exposure:.12f} is below "
+        f"minimum allowed exposure "
+        f"{min_net_exposure:.12f}."
+    )
 
     if (
-        max_net_exposure is not None
-        and net_exposure > max_net_exposure
-    ):
+    max_net_exposure is not None
+    and net_exposure
+    > max_net_exposure + tolerance
+):
         raise ValueError(
-            "Portfolio net exposure "
-            f"{net_exposure:.12f} exceeds "
-            f"maximum allowed exposure "
-            f"{max_net_exposure:.12f}."
-        )
-
+        "Portfolio net exposure "
+        f"{net_exposure:.12f} exceeds "
+        f"maximum allowed exposure "
+        f"{max_net_exposure:.12f}."
+    )
 
 def validate_portfolio(
     weights: pd.Series,

@@ -56,19 +56,44 @@ def global_minimum_variance(
             "covariance contains non-finite values."
         )
 
-    weights = global_minimum_variance_portfolio(
+    result = global_minimum_variance_portfolio(
         covariance.to_numpy(),
     )
 
-    return pd.Series(
+    if isinstance(result, dict):
+
+        raw_weights = result.get(
+            "weights",
+        )
+
+        if raw_weights is None:
+            raise ValueError(
+                "APRL did not return portfolio weights."
+            )
+
+    elif isinstance(result, tuple):
+
+        raw_weights = result[0]
+
+    else:
+
+        raw_weights = result
+
+    weights = pd.Series(
         np.asarray(
-            weights,
+            raw_weights,
             dtype=float,
-        ),
+        ).reshape(-1),
         index=covariance.index,
         name="weight",
     )
 
+    if weights.isna().any():
+        raise ValueError(
+            "APRL returned incomplete portfolio weights."
+        )
+
+    return weights
 
 def equal_weight_portfolio(
     assets: list[str],
