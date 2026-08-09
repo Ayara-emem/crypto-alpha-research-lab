@@ -30,6 +30,7 @@ from crypto_alpha_lab.research.experiment import (
 from crypto_alpha_lab.research.experiment import (
     ResearchExperiment,
 )
+
 __all__ = [
     "feature_target_correlation",
     "feature_target_rank_correlation",
@@ -50,5 +51,6 @@ __all__ = [
     "set_target",
     "set_alpha_report",
     "set_signals",
-    "set_portfolio"
+    "set_portfolio",
+    
 ]

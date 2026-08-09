@@ -42,6 +42,10 @@ from crypto_alpha_lab.portfolio.validation import (
     validate_weights,
 )
 
+from crypto_alpha_lab.portfolio.covariance import (
+    CovarianceEstimate,
+    CovarianceEstimator,
+)
 __all__ = [
     "equal_weight_portfolio",
     "global_minimum_variance",
@@ -65,5 +69,7 @@ __all__ = [
     "net_exposure",
     "concentration",
     "effective_number_of_positions",
+    "CovarianceEstimate",
+    "CovarianceEstimator",
     
 ]
