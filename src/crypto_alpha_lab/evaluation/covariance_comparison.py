@@ -7,6 +7,9 @@ estimation itself.
 """
 
 from __future__ import annotations
+from asset_pricing_lab import returns
+from crypto_alpha_lab.research import experiment
+import numpy as np
 
 from dataclasses import dataclass
 import numbers
@@ -78,7 +81,6 @@ class CovarianceComparison:
         self.risk_free_rate = risk_free_rate
 
     @staticmethod
-
     def _validate_experiments(
         experiments: list[
             CovarianceExperimentResult
@@ -88,100 +90,85 @@ class CovarianceComparison:
         Validate the experiment collection.
         """
 
-        if not isinstance(
-    experiments,
-    list,
-    ):
+        if not isinstance(experiments, list):
             raise TypeError(
         "experiments must be a list."
-        )
+    )
 
         if not experiments:
             raise ValueError(
         "experiments cannot be empty."
-        )
+    )
 
         for experiment in experiments:
 
             if not isinstance(
-                experiment,
-                CovarianceExperimentResult,
-                ):
-
+        experiment,
+        CovarianceExperimentResult,
+    ):
                 raise TypeError(
-            "each experiment must be a "
-            "CovarianceExperimentResult."
+            "experiments must contain only "
+            "CovarianceExperimentResult instances."
         )
-
-        if not isinstance(
-            experiments,
-            list,
-        ):
-            raise TypeError(
-                "experiments must be a list."
-            )
-
-        if not experiments:
-            raise ValueError(
-                "experiments cannot be empty."
-            )
 
         methods = [
             experiment.method
             for experiment in experiments
-        ]
+]
 
-        if len(methods) != len(
-            set(methods)
-        ):
+        if len(methods) != len(set(methods)):
             raise ValueError(
-                "experiments cannot contain "
-                "duplicate covariance methods."
-            )
+        "duplicate experiment methods are not allowed."
+    )
 
         for experiment in experiments:
 
-            if not isinstance(
-                experiment,
-                CovarianceExperimentResult,
-            ):
-                raise TypeError(
-                    "all experiments must be "
-                    "CovarianceExperimentResult "
-                    "instances."
-                )
+            if experiment.metadata.get(
+        "out_of_sample"
+        ) is not True:
+                raise ValueError(
+            f"experiment '{experiment.method}' "
+            "must be strictly out-of-sample."
+        )
 
-            if not experiment.metadata.get(
-                "out_of_sample",
-                False,
-            ):
-                raise ValueError(
-                    "all experiments must be "
-                    "strictly out-of-sample."
-                )
+        returns = experiment.returns
 
-            if experiment.returns.empty:
-                raise ValueError(
-                    f"experiment {experiment.method!r} "
-                    "contains no returns."
-                )
+        if not isinstance(
+        returns,
+        pd.Series,
+    ):
+            raise TypeError(
+            f"experiment '{experiment.method}' "
+            "returns must be a pandas Series."
+        )
 
-            if experiment.returns.index.has_duplicates:
-                raise ValueError(
-        f"experiment {experiment.method!r} "
-        "returns contain duplicate dates."
-    )
-            if not experiment.returns.index.is_monotonic_increasing:
-                raise ValueError(
-                    f"experiment {experiment.method!r} "
-                    "returns must be chronological."
-                )
+        if returns.empty:
+            raise ValueError(
+            f"experiment '{experiment.method}' "
+            "has no returns."
+        )
 
-            if experiment.returns.index.has_duplicates:
-                raise ValueError(
-                    f"experiment {experiment.method!r} "
-                    "returns contain duplicate dates."
-                )
+        if returns.index.has_duplicates:
+            raise ValueError(
+                f"experiment '{experiment.method}' "
+                "returns contain duplicate dates."
+            )
+
+        if not returns.index.is_monotonic_increasing:
+            raise ValueError(
+                f"experiment '{experiment.method}' "
+                "returns must be chronological."
+            )
+
+        values = returns.to_numpy(
+            dtype=float
+        )
+
+        if not np.isfinite(values).all():
+            raise ValueError(
+                f"experiment '{experiment.method}' "
+                "returns must contain only finite values."
+            )
 
     def compare(
         self,
@@ -191,6 +178,9 @@ class CovarianceComparison:
     ) -> CovarianceComparisonResult:
         """
         Compare completed covariance experiments.
+
+        The comparison is strictly out-of-sample and produces
+        exactly one summary row per covariance methodology.
         """
 
         self._validate_experiments(
@@ -205,10 +195,15 @@ class CovarianceComparison:
                 self.risk_free_rate
             ),
         )
-        
-        summary_rows: list[dict[str, object]] = []
 
-        returns: dict[str, pd.Series] = {}
+        summary_rows: list[
+            dict[str, object]
+        ] = []
+
+        returns: dict[
+            str,
+            pd.Series,
+        ] = {}
 
         cumulative_returns: dict[
             str,
@@ -224,21 +219,25 @@ class CovarianceComparison:
                 series
             )
 
-            returns[method] = series.copy()
-
-            cumulative_returns[
-                method
-            ] = experiment.cumulative_returns.copy()
-
             turnover_values = [
-                fold.turnover
+                float(fold.turnover)
                 for fold in experiment.folds
+                if fold.turnover is not None
             ]
 
-            average_turnover = (
-                sum(turnover_values)
-                / len(turnover_values)
+            if turnover_values:
+                average_turnover = float(
+                    np.mean(turnover_values)
+                )
+            else:
+                average_turnover = 0.0
+
+            calmar = float(
+                report.calmar_ratio
             )
+
+            if not np.isfinite(calmar):
+                calmar = 0.0
 
             summary_rows.append(
                 {
@@ -255,12 +254,13 @@ class CovarianceComparison:
                     "sharpe_ratio": (
                         report.sharpe_ratio
                     ),
+                    "sortino_ratio": (
+                        report.sortino_ratio
+                    ),
                     "maximum_drawdown": (
                         report.maximum_drawdown
                     ),
-                    "calmar_ratio": (
-                        report.calmar_ratio
-                    ),
+                    "calmar_ratio": calmar,
                     "hit_rate": (
                         report.hit_rate
                     ),
@@ -273,15 +273,21 @@ class CovarianceComparison:
                 }
             )
 
+            returns[method] = (
+                series.copy()
+            )
+
+            cumulative_returns[method] = (
+                experiment.cumulative_returns.copy()
+            )
+
         summary = pd.DataFrame(
             summary_rows
         ).set_index(
             "method"
         )
 
-        summary.index.name = (
-            "method"
-        )
+        summary.index.name = "method"
 
         return CovarianceComparisonResult(
             summary=summary,

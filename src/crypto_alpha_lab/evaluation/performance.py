@@ -12,12 +12,13 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from asset_pricing_lab.risk import (
+    calmar_ratio as aprl_calmar_ratio,
+    sortino_ratio as aprl_sortino_ratio,
+)
 from asset_pricing_lab.returns import (
     annualized_return as aprl_annualized_return,
     annualized_volatility as aprl_annualized_volatility,
-)
-from asset_pricing_lab.risk import (
-    calmar_ratio as aprl_calmar_ratio,
 )
 
 
@@ -35,6 +36,7 @@ class PerformanceReport:
     calmar_ratio: float
     hit_rate: float
     observation_count: int
+    sortino_ratio: float
 
 
 class PerformanceAnalyzer:
@@ -61,6 +63,7 @@ class PerformanceAnalyzer:
         self.periods_per_year = int(
             periods_per_year
         )
+
         self.risk_free_rate = float(
             risk_free_rate
         )
@@ -229,7 +232,8 @@ class PerformanceAnalyzer:
         """
         Compute annualized Sharpe ratio.
 
-        The risk-free rate is interpreted as an annual rate.
+        The risk-free rate is interpreted as an
+        annual rate.
         """
 
         returns = self._validate_returns(
@@ -258,42 +262,94 @@ class PerformanceAnalyzer:
             )
         )
 
-    def calmar_ratio(
+    def sortino_ratio(
         self,
         returns: pd.Series,
     ) -> float:
         """
-        Compute Calmar ratio through APRL.
+        Compute the annualized Sortino ratio through APRL.
 
-        APRL's Calmar implementation expects a price-like
-        wealth series, so CARL converts returns into a
-        cumulative wealth index before delegation.
+        If the downside deviation is zero, the Sortino
+        ratio is mathematically undefined. CARL represents
+        that condition as NaN rather than failing the
+        complete research report.
+
+        Other ValueError exceptions are propagated so that
+        invalid inputs are not silently suppressed.
         """
 
         returns = self._validate_returns(
             returns
-        )
-
-        wealth = (
-            1.0 + returns
-        ).cumprod()
-
-        return float(
-            aprl_calmar_ratio(
-                prices=wealth,
-                periods=len(returns),
-                periods_per_year=(
-                    self.periods_per_year
-                ),
             )
-        )
+        
+        try:
+            return float(
+                aprl_sortino_ratio(
+                    returns.to_numpy(
+                        dtype=float
+                        ),
+                        risk_free_rate=(
+                            self.risk_free_rate
+                            ),
+                            )
+                            )
+        except ValueError as exc:
+            if (
+                "undefined when downside deviation is zero"
+                not in str(exc).lower()
+                ):
+                raise
+            return float("nan")
+
+    def calmar_ratio(
+        self,
+        returns: pd.Series,
+    ) -> float:
+            """
+            Compute Calmar ratio through APRL.
+
+            CARL converts the return series into a cumulative
+            wealth index before delegating to APRL.
+
+            A zero maximum drawdown makes the Calmar ratio
+            undefined. CARL represents that undefined
+            reporting value as zero.
+            """
+
+            returns = self._validate_returns(
+                returns
+            )
+
+            wealth = (
+                1.0 + returns
+            ).cumprod()
+
+            try:
+                return float(
+                    aprl_calmar_ratio(
+                        prices=wealth,
+                        periods=len(returns),
+                        periods_per_year=(
+                            self.periods_per_year
+                        ),
+                    )
+                )
+            except ValueError as exc:
+                if (
+                    "maximum drawdown is zero"
+                    not in str(exc).lower()
+                ):
+                    raise
+
+                return 0.0
 
     def hit_rate(
         self,
         returns: pd.Series,
     ) -> float:
         """
-        Fraction of observations with positive returns.
+        Compute the fraction of observations
+        with positive returns.
         """
 
         returns = self._validate_returns(
@@ -308,15 +364,14 @@ class PerformanceAnalyzer:
         self,
         returns: pd.Series,
     ) -> PerformanceReport:
-        """
-        Produce a complete performance report.
-        """
-
-        returns = self._validate_returns(
+            """
+            Produce a complete performance report.
+            """
+            returns = self._validate_returns(
             returns
         )
 
-        return PerformanceReport(
+            return PerformanceReport(
             total_return=self.total_return(
                 returns
             ),
@@ -347,6 +402,7 @@ class PerformanceAnalyzer:
             observation_count=len(
                 returns
             ),
+            sortino_ratio=self.sortino_ratio(
+                returns
+            ),
         )
-
-    

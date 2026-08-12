@@ -15,8 +15,8 @@ from crypto_alpha_lab.backtest.engine import (
     BacktestResult,
 )
 
-from crypto_alpha_lab.backtest.performance import (
-    performance_summary,
+from crypto_alpha_lab.evaluation.performance import (
+    PerformanceAnalyzer,
 )
 
 
@@ -36,7 +36,8 @@ class BacktestReport:
     cumulative_returns
         Cumulative portfolio returns.
 
-    weights
+   weights
+    Portfolio weights.
         Portfolio weights.
 
     metadata
@@ -118,10 +119,29 @@ def build_backtest_report(
         Structured backtest report.
     """
 
-    summary = performance_summary(
-        result,
-        risk_free_rate=risk_free_rate,
-        periods_per_year=periods_per_year,
+    analyzer = PerformanceAnalyzer(
+    periods_per_year=periods_per_year,
+    risk_free_rate=risk_free_rate,
+)
+
+    performance = analyzer.analyze(
+        result.portfolio_returns
+    )
+
+    summary = pd.Series(
+        {
+            "total_return": performance.total_return,
+            "annualized_return": performance.annualized_return,
+            "annualized_volatility": performance.annualized_volatility,
+            "sharpe_ratio": performance.sharpe_ratio,
+            "maximum_drawdown": performance.maximum_drawdown,
+            "calmar_ratio": performance.calmar_ratio,
+            "hit_rate": performance.hit_rate,
+            "observation_count": performance.observation_count,
+            "turnover": result.turnover,
+            "transaction_costs": result.transaction_costs,
+        },
+        dtype=float,
     )
 
     report_metadata = {}

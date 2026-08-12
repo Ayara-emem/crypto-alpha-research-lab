@@ -11,13 +11,11 @@ from crypto_alpha_lab.backtest.cost import (
     CompositeCostModel,
 )
 
-from crypto_alpha_lab.backtest.performance import (
-    annualized_return_from_backtest,
-    annualized_volatility_from_backtest,
-    sharpe_ratio_from_backtest,
-    sortino_ratio_from_backtest,
-    calmar_ratio_from_backtest,
-    performance_summary,
+from crypto_alpha_lab.backtest.report import (
+    BacktestReport,
+    build_backtest_report,
+    report_summary,
+    report_table,
 )
 
 __all__ = ["BacktestEngine",
@@ -27,11 +25,8 @@ __all__ = ["BacktestEngine",
     "ProportionalCostModel",
     "BidAskSpreadModel",
     "CompositeCostModel",
-    "annualized_return_from_backtest",
-    "annualized_volatility_from_backtest",
-    "sharpe_ratio_from_backtest",
-    "sortino_ratio_from_backtest",
-    "calmar_ratio_from_backtest",
-    "performance_summary"
-    
+    "BacktestReport",
+    "build_backtest_report",   
+    "report_summary",
+    "report_table"
       ]
