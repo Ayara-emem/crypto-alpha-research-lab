@@ -1,0 +1,7 @@
+claim,evidence,robustness,strength
+Covariance methodology materially affects portfolio performance.,"Baseline comparison shows different total returns, Sharpe ratios, drawdowns, and turnover across sample, shrinkage, and Ledoit-Wolf methods.",Observed across multiple training-window configurations.,Strong
+Sample covariance produced the strongest observed risk-adjusted performance.,"Sample covariance produced the highest Sharpe, Sortino, and Calmar ratios in the tested training-window configurations.","Sample ranked first across 126, 252, and 504 observations.",Strong
+The covariance-method ranking is robust to training-window choice.,The ranking remained Sample > Shrinkage > Ledoit-Wolf across all three training windows.,"Confirmed across 126-, 252-, and 504-observation windows.",Strong
+Shrinkage intensity creates a performance-risk trade-off.,Increasing shrinkage reduced return and risk-adjusted performance while improving maximum drawdown.,Observed across six tested shrinkage intensities.,Strong
+Shrinkage can improve implementation characteristics.,Explicit shrinkage produced lower turnover than sample covariance in the baseline and training-window analyses.,The turnover advantage remained visible across tested training windows.,Moderate
+One covariance estimator is universally superior.,"The experiments do not test enough markets, portfolio constructions, or regimes to support this claim.",Not established.,Unsupported

@@ -11,13 +11,16 @@ from crypto_alpha_lab.research.covariance_robustness import (
     run_covariance_robustness,
 )
 
-
 @pytest.fixture
-def prices() -> pd.DataFrame:
+def robustness_prices() -> pd.DataFrame:
+    """
+    Deterministic multi-asset price history
+    large enough for robustness experiments.
+    """
 
     index = pd.date_range(
-        "2024-01-01",
-        periods=80,
+        "2022-01-01",
+        periods=800,
         freq="D",
     )
 
@@ -26,18 +29,27 @@ def prices() -> pd.DataFrame:
         dtype=float,
     )
 
-    prices = pd.DataFrame(
+    return pd.DataFrame(
         {
-            "BTC": 100 + 1.0 * t,
-            "ETH": 60 + 0.7 * t,
-            "SOL": 40 + 0.5 * t,
+            "BTC": (
+                100.0
+                + 0.15 * t
+                + 0.02 * np.sin(t / 10.0)
+            ),
+            "ETH": (
+                60.0
+                + 0.10 * t
+                + 0.03 * np.sin(t / 15.0)
+            ),
+            "SOL": (
+                40.0
+                + 0.08 * t
+                + 0.04 * np.sin(t / 20.0)
+            ),
         },
         index=index,
     )
 
-    prices.iloc[35:40] *= 0.90
-
-    return prices
 
 
 @pytest.fixture
@@ -476,3 +488,182 @@ def test_robustness_run_is_deterministic(
         first.summary,
         second.summary,
     )
+
+
+# ---------------------------------------------------------------------------
+# Training-window sensitivity
+# ---------------------------------------------------------------------------
+
+
+def test_multiple_training_windows_are_supported(
+    robustness_prices: pd.DataFrame,
+):
+    """
+    Robustness analysis should support multiple training windows.
+    """
+
+    configurations = [
+        RobustnessConfiguration(
+            train_size=126,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+        RobustnessConfiguration(
+            train_size=252,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+        RobustnessConfiguration(
+            train_size=504,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+    ]
+
+    result = run_covariance_robustness(
+        prices=robustness_prices,
+        configurations=configurations,
+    )
+
+    assert isinstance(
+        result,
+        CovarianceRobustnessResult,
+    )
+
+    assert len(result.experiments) == (
+        len(configurations) * 3
+    )
+
+
+def test_training_window_is_preserved_in_summary(
+    robustness_prices: pd.DataFrame,
+):
+    """
+    Each robustness experiment must preserve
+    its training-window configuration.
+    """
+
+    configurations = [
+        RobustnessConfiguration(
+            train_size=126,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+        RobustnessConfiguration(
+            train_size=252,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+        RobustnessConfiguration(
+            train_size=504,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+    ]
+
+    result = run_covariance_robustness(
+        prices=robustness_prices,
+        configurations=configurations,
+    )
+
+    assert set(
+        result.summary["train_size"]
+    ) == {
+        126,
+        252,
+        504,
+    }
+
+
+def test_test_window_is_constant_in_training_sensitivity(
+    robustness_prices: pd.DataFrame,
+):
+    """
+    Training-window sensitivity should hold
+    the test horizon constant.
+    """
+
+    configurations = [
+        RobustnessConfiguration(
+            train_size=126,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+        RobustnessConfiguration(
+            train_size=252,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+        RobustnessConfiguration(
+            train_size=504,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+    ]
+
+    result = run_covariance_robustness(
+        prices=robustness_prices,
+        configurations=configurations,
+    )
+
+    assert result.summary[
+        "test_size"
+    ].nunique() == 1
+
+    assert (
+        result.summary[
+            "test_size"
+        ].iloc[0]
+        == 21
+    )
+
+
+def test_all_covariance_methods_are_evaluated_for_each_training_window(
+    robustness_prices: pd.DataFrame,
+):
+    """
+    Every training window should evaluate
+    all supported covariance methodologies.
+    """
+
+    configurations = [
+        RobustnessConfiguration(
+            train_size=126,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+        RobustnessConfiguration(
+            train_size=252,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+        RobustnessConfiguration(
+            train_size=504,
+            test_size=21,
+            shrinkage=0.25,
+        ),
+    ]
+
+    result = run_covariance_robustness (
+        prices = robustness_prices,
+        configurations=configurations,)
+
+
+    for train_size in (
+        126,
+        252,
+        504,
+    ):
+        methods = set(
+            result.summary.loc[
+                result.summary["train_size"]
+                == train_size,
+                "method",
+            ]
+        )
+
+        assert methods == {
+            "sample",
+            "shrinkage",
+            "ledoit_wolf",
+        }

@@ -48,11 +48,77 @@ def _finalize_dataframe(prices: pd.DataFrame) -> pd.DataFrame:
     return prices
 
 
+def _cache_covers_range(
+    prices: pd.DataFrame,
+    start: str,
+    end: str,
+    interval: str = "1D",
+) -> bool:
+    """
+    Return whether cached prices cover the requested date range.
+
+    The ``end`` date follows the data-provider convention used
+    by CARL and is treated as an exclusive upper boundary.
+
+    Parameters
+    ----------
+    prices
+        Cached market data.
+
+    start
+        Requested start date.
+
+    end
+        Requested end date.
+
+    interval
+        Data frequency.
+
+    Returns
+    -------
+    bool
+        True when the cached data fully cover the requested range.
+    """
+
+    if prices.empty:
+        return False
+
+    if not prices.index.is_monotonic_increasing:
+        return False
+
+    requested_start = pd.Timestamp(start)
+    requested_end = pd.Timestamp(end)
+
+    cached_start = pd.Timestamp(
+        prices.index[0]
+    )
+
+    cached_end = pd.Timestamp(
+        prices.index[-1]
+    )
+
+    try:
+        interval_offset = pd.tseries.frequencies.to_offset(
+            interval
+        )
+    except ValueError:
+        return False
+
+    required_last_observation = (
+        requested_end - interval_offset
+    )
+
+    return (
+        cached_start <= requested_start
+        and cached_end >= required_last_observation
+    )
+
+
 def load_prices(
     ticker: str,
     start: str,
     end: str,
-    interval: str = "1d",
+    interval: str = "1D",
     auto_adjust: bool = True,
     refresh: bool = False,
 ) -> pd.DataFrame:
@@ -61,6 +127,9 @@ def load_prices(
 
     Data are loaded from the local cache whenever possible.
     Otherwise, they are downloaded.
+
+    Cached data are used only when they cover the requested
+    date range.
 
     Regardless of the source, the returned DataFrame is
     normalized, validated, finalized, and guaranteed to satisfy
@@ -71,7 +140,26 @@ def load_prices(
 
     if cache_exists(ticker) and not refresh:
 
-        prices = load_cached_prices(ticker)
+        cached_prices = load_cached_prices(ticker)
+
+        if _cache_covers_range(
+    cached_prices,
+    start=start,
+    end=end,
+    interval=interval,
+):
+            prices = cached_prices
+
+        else:
+            prices = download_prices(
+                ticker=ticker,
+                start=start,
+                end=end,
+                interval=interval,
+                auto_adjust=auto_adjust,
+            )
+
+            downloaded = True
 
     else:
 

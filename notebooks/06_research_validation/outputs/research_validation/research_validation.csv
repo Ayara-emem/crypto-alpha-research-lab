@@ -1,0 +1,10 @@
+Dimension,Result
+Research question,Covariance methodology affects GMV portfolio outcomes.
+Out-of-sample design,Strict walk-forward evaluation.
+Covariance methods,"Sample, shrinkage, Ledoit-Wolf."
+Training-window sensitivity,"Ranking remained stable across 126, 252, and 504 observations."
+Shrinkage sensitivity,Performance declined progressively as shrinkage increased.
+Performance leader,Sample covariance.
+Drawdown leader,Ledoit-Wolf among the tested baseline methods.
+Turnover consideration,Shrinkage reduced turnover relative to sample covariance.
+Generalization,Conclusions remain conditional on the tested research design.
